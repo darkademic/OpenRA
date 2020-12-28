@@ -161,8 +161,8 @@ namespace OpenRA.Scripting
 				.ToArray();
 			PlayerCommands = FilterCommands(world.Map.Rules.Actors["player"], knownPlayerCommands);
 
-			runtime.Globals["GameDir"] = Platform.GameDir;
-			runtime.DoBuffer(File.Open(Platform.ResolvePath(".", "lua", "scriptwrapper.lua"), FileMode.Open, FileAccess.Read).ReadAllText(), "scriptwrapper.lua").Dispose();
+			runtime.Globals["EngineDir"] = Platform.EngineDir;
+			runtime.DoBuffer(File.Open(Path.Combine(Platform.EngineDir, "lua", "scriptwrapper.lua"), FileMode.Open, FileAccess.Read).ReadAllText(), "scriptwrapper.lua").Dispose();
 			tick = (LuaFunction)runtime.Globals["Tick"];
 
 			// Register globals
@@ -267,8 +267,7 @@ namespace OpenRA.Scripting
 				return;
 
 			disposed = true;
-			if (runtime != null)
-				runtime.Dispose();
+			runtime?.Dispose();
 		}
 
 		static IEnumerable<Type> ExtractRequiredTypes(Type t)

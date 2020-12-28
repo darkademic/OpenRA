@@ -3,14 +3,12 @@
 ###############################################################
 ########################## FUNCTIONS ##########################
 ###############################################################
-function All-Command 
+function All-Command
 {
 	if ((CheckForDotnet) -eq 1)
 	{
 		return
 	}
-
-	Dependencies-Command
 
 	dotnet build /p:Configuration=Release /nologo
 	if ($lastexitcode -ne 0)
@@ -30,7 +28,7 @@ function All-Command
 	}
 }
 
-function Clean-Command 
+function Clean-Command
 {
 	if ((CheckForDotnet) -eq 1)
 	{
@@ -38,22 +36,13 @@ function Clean-Command
 	}
 
 	dotnet clean /nologo
-	rm *.dll
-	rm mods/*/*.dll
-	rm *.config
-	rm *.pdb
-	rm mods/*/*.pdb
-	rm *.exe
+	rm ./bin -r
 	rm ./*/bin -r
 	rm ./*/obj -r
-	if (Test-Path thirdparty/download/)
-	{
-		rmdir thirdparty/download -Recurse -Force
-	}
 	Write-Host "Clean complete." -ForegroundColor Green
 }
 
-function Version-Command 
+function Version-Command
 {
 	if ($command.Length -gt 1)
 	{
@@ -76,10 +65,10 @@ function Version-Command
 		}
 	}
 	else
-	{	
+	{
 		Write-Host "Unable to locate Git. The version will remain unchanged." -ForegroundColor Red
 	}
-	
+
 	if ($version -ne $null)
 	{
 		$version | out-file ".\VERSION"
@@ -101,27 +90,6 @@ function Version-Command
 	}
 }
 
-function Dependencies-Command
-{
-	cd thirdparty
-	./fetch-thirdparty-deps.ps1
-	cp download/*.dll ..
-	cp download/windows/*.dll ..
-	cd ..
-	Write-Host "Dependencies copied." -ForegroundColor Cyan
-
-	if ((CheckForDotnet) -eq 1)
-	{
-		return
-	}
-
-	dotnet restore /nologo
-	if ($lastexitcode -ne 0)
-	{
-		Write-Host "Project restoration failed." -ForegroundColor Red
-	}
-}
-
 function Test-Command
 {
 	if ((CheckForUtility) -eq 1)
@@ -131,13 +99,13 @@ function Test-Command
 
 	Write-Host "Testing mods..." -ForegroundColor Cyan
 	Write-Host "Testing Tiberian Sun mod MiniYAML..." -ForegroundColor Cyan
-	./OpenRA.Utility.exe ts --check-yaml
+	Invoke-Expression "$utilityPath ts --check-yaml"
 	Write-Host "Testing Dune 2000 mod MiniYAML..." -ForegroundColor Cyan
-	./OpenRA.Utility.exe d2k --check-yaml
+	Invoke-Expression "$utilityPath d2k --check-yaml"
 	Write-Host "Testing Tiberian Dawn mod MiniYAML..." -ForegroundColor Cyan
-	./OpenRA.Utility.exe cnc --check-yaml
+	Invoke-Expression "$utilityPath cnc --check-yaml"
 	Write-Host "Testing Red Alert mod MiniYAML..." -ForegroundColor Cyan
-	./OpenRA.Utility.exe ra --check-yaml
+	Invoke-Expression "$utilityPath ra --check-yaml"
 }
 
 function Check-Command
@@ -152,10 +120,10 @@ function Check-Command
 	if ((CheckForUtility) -eq 0)
 	{
 		Write-Host "Checking for explicit interface violations..." -ForegroundColor Cyan
-		./OpenRA.Utility.exe all --check-explicit-interfaces
+		Invoke-Expression "$utilityPath all --check-explicit-interfaces"
 
 		Write-Host "Checking for incorrect conditional trait interface overrides..." -ForegroundColor Cyan
-		./OpenRA.Utility.exe all --check-conditional-trait-interface-overrides
+		Invoke-Expression "$utilityPath all --check-conditional-trait-interface-overrides"
 	}
 }
 
@@ -169,6 +137,10 @@ function Check-Scripts-Command
 			luac -p $script
 		}
 		foreach ($script in ls "lua/*.lua")
+		{
+			luac -p $script
+		}
+		foreach ($script in ls "mods/*/bits/scripts/*.lua")
 		{
 			luac -p $script
 		}
@@ -188,15 +160,15 @@ function Docs-Command
 	}
 
 	./make.ps1 version
-	./OpenRA.Utility.exe all --docs | Out-File -Encoding "UTF8" DOCUMENTATION.md
-	./OpenRA.Utility.exe all --weapon-docs | Out-File -Encoding "UTF8" WEAPONS.md
-	./OpenRA.Utility.exe all --lua-docs | Out-File -Encoding "UTF8" Lua-API.md
-	./OpenRA.Utility.exe all --settings-docs | Out-File -Encoding "UTF8" Settings.md
+	Invoke-Expression "$utilityPath all --docs" | Out-File -Encoding "UTF8" DOCUMENTATION.md
+	Invoke-Expression "$utilityPath all --weapon-docs" | Out-File -Encoding "UTF8" WEAPONS.md
+	Invoke-Expression "$utilityPath all --lua-docs" | Out-File -Encoding "UTF8" Lua-API.md
+	Invoke-Expression "$utilityPath all --settings-docs" | Out-File -Encoding "UTF8" Settings.md
 }
 
 function CheckForUtility
 {
-	if (Test-Path OpenRA.Utility.exe)
+	if (Test-Path $utilityPath)
 	{
 		return 0
 	}
@@ -207,7 +179,7 @@ function CheckForUtility
 
 function CheckForDotnet
 {
-	if ((Get-Command "dotnet" -ErrorAction SilentlyContinue) -eq $null) 
+	if ((Get-Command "dotnet" -ErrorAction SilentlyContinue) -eq $null)
 	{
 		Write-Host "The 'dotnet' tool is required to compile OpenRA. Please install the .NET Core SDK or Visual Studio and try again. https://dotnet.microsoft.com/download" -ForegroundColor Red
 		return 1
@@ -244,7 +216,6 @@ if ($args.Length -eq 0)
 	Write-Host "Command list:"
 	Write-Host ""
 	Write-Host "  all, a              Builds the game and its development tools."
-	Write-Host "  dependencies, d     Copies the game's dependencies into the main game folder."
 	Write-Host "  version, v          Sets the version strings for the default mods to the"
 	Write-Host "                      latest version for the current Git branch."
 	Write-Host "  clean, c            Removes all built and copied files. Use the 'all' and"
@@ -261,6 +232,9 @@ else
 	$command = $args
 }
 
+$env:ENGINE_DIR = ".."
+$utilityPath = "bin\OpenRA.Utility.exe"
+
 $execute = $command
 if ($command.Length -gt 1)
 {
@@ -270,7 +244,6 @@ if ($command.Length -gt 1)
 switch ($execute)
 {
 	{"all",           "a"  -contains $_} { All-Command }
-	{"dependencies",  "d"  -contains $_} { Dependencies-Command }
 	{"version",       "v"  -contains $_} { Version-Command }
 	{"clean",         "c"  -contains $_} { Clean-Command }
 	{"test",          "t"  -contains $_} { Test-Command }
@@ -280,7 +253,7 @@ switch ($execute)
 	Default { Write-Host ("Invalid command '{0}'" -f $command) }
 }
 
-#In case the script was called without any parameters we keep the window open 
+#In case the script was called without any parameters we keep the window open
 if ($args.Length -eq 0)
 {
 	WaitForInput

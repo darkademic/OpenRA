@@ -46,7 +46,7 @@ namespace OpenRA.Mods.Common.Traits.BotModules.Squads
 			}
 
 			var enemyUnits = owner.World.FindActorsInCircle(owner.TargetActor.CenterPosition, WDist.FromCells(owner.SquadManager.Info.IdleScanRadius))
-				.Where(owner.SquadManager.IsEnemyUnit).ToList();
+				.Where(owner.SquadManager.IsPreferredEnemyUnit).ToList();
 
 			if (enemyUnits.Count == 0)
 				return;
@@ -68,6 +68,10 @@ namespace OpenRA.Mods.Common.Traits.BotModules.Squads
 
 	class GroundUnitsAttackMoveState : GroundStateBase, IState
 	{
+		int lastUpdatedTick;
+		CPos? lastLeaderLocation;
+		Actor lastTarget;
+
 		public void Activate(Squad owner) { }
 
 		public void Tick(Squad owner)
@@ -91,6 +95,27 @@ namespace OpenRA.Mods.Common.Traits.BotModules.Squads
 			if (leader == null)
 				return;
 
+			if (leader.Location != lastLeaderLocation)
+			{
+				lastLeaderLocation = leader.Location;
+				lastUpdatedTick = owner.World.WorldTick;
+			}
+
+			if (owner.TargetActor != lastTarget)
+			{
+				lastTarget = owner.TargetActor;
+				lastUpdatedTick = owner.World.WorldTick;
+			}
+
+			// HACK: Drop back to the idle state if we haven't moved in 2.5 seconds
+			// This works around the squad being stuck trying to attack-move to a location
+			// that they cannot path to, generating expensive pathfinding calls each tick.
+			if (owner.World.WorldTick > lastUpdatedTick + 63)
+			{
+				owner.FuzzyStateMachine.ChangeState(owner, new GroundUnitsIdleState(), true);
+				return;
+			}
+
 			var ownUnits = owner.World.FindActorsInCircle(leader.CenterPosition, WDist.FromCells(owner.Units.Count) / 3)
 				.Where(a => a.Owner == owner.Units.First().Owner && owner.Units.Contains(a)).ToHashSet();
 
@@ -105,7 +130,7 @@ namespace OpenRA.Mods.Common.Traits.BotModules.Squads
 			else
 			{
 				var enemies = owner.World.FindActorsInCircle(leader.CenterPosition, WDist.FromCells(owner.SquadManager.Info.AttackScanRadius))
-					.Where(owner.SquadManager.IsEnemyUnit);
+					.Where(owner.SquadManager.IsPreferredEnemyUnit);
 				var target = enemies.ClosestTo(leader.CenterPosition);
 				if (target != null)
 				{
@@ -126,6 +151,10 @@ namespace OpenRA.Mods.Common.Traits.BotModules.Squads
 
 	class GroundUnitsAttackState : GroundStateBase, IState
 	{
+		int lastUpdatedTick;
+		CPos? lastLeaderLocation;
+		Actor lastTarget;
+
 		public void Activate(Squad owner) { }
 
 		public void Tick(Squad owner)
@@ -143,6 +172,28 @@ namespace OpenRA.Mods.Common.Traits.BotModules.Squads
 					owner.FuzzyStateMachine.ChangeState(owner, new GroundUnitsFleeState(), true);
 					return;
 				}
+			}
+
+			var leader = owner.Units.ClosestTo(owner.TargetActor.CenterPosition);
+			if (leader.Location != lastLeaderLocation)
+			{
+				lastLeaderLocation = leader.Location;
+				lastUpdatedTick = owner.World.WorldTick;
+			}
+
+			if (owner.TargetActor != lastTarget)
+			{
+				lastTarget = owner.TargetActor;
+				lastUpdatedTick = owner.World.WorldTick;
+			}
+
+			// HACK: Drop back to the idle state if we haven't moved in 2.5 seconds
+			// This works around the squad being stuck trying to attack-move to a location
+			// that they cannot path to, generating expensive pathfinding calls each tick.
+			if (owner.World.WorldTick > lastUpdatedTick + 63)
+			{
+				owner.FuzzyStateMachine.ChangeState(owner, new GroundUnitsIdleState(), true);
+				return;
 			}
 
 			foreach (var a in owner.Units)

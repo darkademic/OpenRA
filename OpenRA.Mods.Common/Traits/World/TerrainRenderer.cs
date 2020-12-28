@@ -15,9 +15,9 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
-	public class TerrainRendererInfo : ITraitInfo
+	public class TerrainRendererInfo : TraitInfo
 	{
-		public object Create(ActorInitializer init) { return new TerrainRenderer(init.World); }
+		public override object Create(ActorInitializer init) { return new TerrainRenderer(init.World); }
 	}
 
 	public sealed class TerrainRenderer : IRenderTerrain, IWorldLoaded, INotifyActorDisposing
@@ -59,7 +59,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			var sprite = theater.TileSprite(tile);
 			foreach (var kv in spriteLayers)
-				kv.Value.Update(cell, palette == kv.Key ? sprite : null);
+				kv.Value.Update(cell, palette == kv.Key ? sprite : null, false);
 		}
 
 		void IRenderTerrain.RenderTerrain(WorldRenderer wr, Viewport viewport)

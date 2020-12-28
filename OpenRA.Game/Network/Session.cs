@@ -26,6 +26,8 @@ namespace OpenRA.Network
 		// Keyed by the PlayerReference id that the slot corresponds to
 		public Dictionary<string, Slot> Slots = new Dictionary<string, Slot>();
 
+		public HashSet<int> DisabledSpawnPoints = new HashSet<int>();
+
 		public Global GlobalSettings = new Global();
 
 		public static string AnonymizeIP(IPAddress ip)
@@ -68,6 +70,9 @@ namespace OpenRA.Network
 						case "Slot":
 							var s = Slot.Deserialize(node.Value);
 							session.Slots.Add(s.PlayerReference, s);
+							break;
+						case "DisabledSpawnPoints":
+							session.DisabledSpawnPoints = FieldLoader.GetValue<HashSet<int>>("DisabledSpawnPoints", node.Value.Value);
 							break;
 					}
 				}
@@ -250,8 +255,7 @@ namespace OpenRA.Network
 
 			public bool OptionOrDefault(string id, bool def)
 			{
-				LobbyOptionState option;
-				if (LobbyOptions.TryGetValue(id, out option))
+				if (LobbyOptions.TryGetValue(id, out var option))
 					return option.IsEnabled;
 
 				return def;
@@ -259,8 +263,7 @@ namespace OpenRA.Network
 
 			public string OptionOrDefault(string id, string def)
 			{
-				LobbyOptionState option;
-				if (LobbyOptions.TryGetValue(id, out option))
+				if (LobbyOptions.TryGetValue(id, out var option))
 					return option.Value;
 
 				return def;
@@ -269,7 +272,10 @@ namespace OpenRA.Network
 
 		public string Serialize()
 		{
-			var sessionData = new List<MiniYamlNode>();
+			var sessionData = new List<MiniYamlNode>()
+			{
+				new MiniYamlNode("DisabledSpawnPoints", FieldSaver.FormatValue(DisabledSpawnPoints))
+			};
 
 			foreach (var client in Clients)
 				sessionData.Add(client.Serialize());

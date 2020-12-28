@@ -16,7 +16,6 @@ DOG:
 	Selectable:
 		Bounds: 12,17,-1,-4
 		DecorationBounds: 12,17,-1,-4
-	SelectionDecorations:
 	Health:
 		HP: 1800
 	Mobile:
@@ -48,7 +47,7 @@ DOG:
 	AutoTargetPriority@DEFAULT:
 		ValidTargets: Infantry
 	Targetable:
-		TargetTypes: Ground, Infantry
+		TargetTypes: GroundActor, Infantry
 	WithInfantryBody:
 		MoveSequence: walk
 		StandSequences: stand
@@ -265,7 +264,7 @@ E6:
 		StandSequences: parachute
 		RequiresCondition: parachute
 	Passenger:
-		PipType: Yellow
+		CustomPipType: yellow
 	EngineerRepair:
 	RepairsBridges:
 	CaptureManager:
@@ -312,7 +311,7 @@ SPY:
 	RevealsShroud:
 		Range: 5c0
 	Passenger:
-		PipType: Blue
+		CustomPipType: blue
 		Voice: Move
 	Disguise:
 		DisguisedCondition: disguise
@@ -330,11 +329,11 @@ SPY:
 		IdleSequences: idle1,idle2
 		StandSequences: stand,stand2
 	WithDecoration@disguise:
+		Position: Top
+		Margin: 0, -6
 		Image: pips
-		Sequence: pip-disguise
+		Sequence: tag-spy
 		Palette: effect
-		ReferencePoint: Top, Right
-		ZOffset: 256
 		RequiresCondition: disguise
 	IgnoresDisguise:
 	Armament:
@@ -386,7 +385,7 @@ E7:
 		DetonationDelay: 45
 		Voice: Demolish
 	Passenger:
-		PipType: Red
+		CustomPipType: red
 		Voice: Move
 	Armament@PRIMARY:
 		Weapon: Colt45
@@ -431,13 +430,13 @@ MEDI:
 	RevealsShroud:
 		Range: 3c0
 	Passenger:
-		PipType: Blue
+		CustomPipType: blue
 	Armament:
 		Weapon: Heal
 		Cursor: heal
 		OutsideRangeCursor: heal
-		TargetStances: Ally
-		ForceTargetStances: None
+		TargetRelationships: Ally
+		ForceTargetRelationships: None
 	WithInfantryBody:
 		IdleSequences: idle
 		StandSequences: stand
@@ -470,14 +469,14 @@ MECH:
 	RevealsShroud:
 		Range: 3c0
 	Passenger:
-		PipType: Blue
+		CustomPipType: blue
 		Voice: Move
 	Armament:
 		Weapon: Repair
 		Cursor: repair
 		OutsideRangeCursor: repair
-		TargetStances: Ally
-		ForceTargetStances: None
+		TargetRelationships: Ally
+		ForceTargetRelationships: None
 	AttackFrontal:
 		Voice: Action
 	CaptureManager:
@@ -486,7 +485,7 @@ MECH:
 		PlayerExperience: 25
 	Infiltrates:
 		Types: Husk
-		ValidStances: Ally
+		ValidRelationships: Ally
 		EnterCursor: goldwrench
 		PlayerExperience: 25
 	WithInfantryBody:
@@ -573,10 +572,10 @@ THF:
 	RevealsShroud:
 		Range: 5c0
 	Passenger:
-		PipType: Blue
+		CustomPipType: blue
 	CaptureManager:
 	Captures:
-		CaptureTypes: vehicle
+		CaptureTypes: vehicle, aircraft
 		PlayerExperience: 50
 	Infiltrates:
 		Types: ThiefInfiltrate
@@ -669,7 +668,7 @@ SNIPER:
 	Health:
 		HP: 8000
 	Passenger:
-		PipType: Red
+		CustomPipType: red
 	RevealsShroud:
 		Range: 6c0
 	AutoTarget:
@@ -749,12 +748,11 @@ Ant:
 	Selectable:
 		Bounds: 24,24,0,-5
 		DecorationBounds: 30,30,0,-2
-	SelectionDecorations:
 	Health:
 		HP: 75000
 	Mobile:
 		Speed: 99
-		TurnSpeed: 12
+		TurnSpeed: 48
 		Locomotor: lighttracked
 	-Crushable:
 	AutoTarget:
@@ -765,7 +763,7 @@ Ant:
 	Armament:
 		Weapon: mandible
 	Targetable:
-		TargetTypes: Ground, Infantry, Ant
+		TargetTypes: GroundActor, Infantry, Ant
 	WithDeathAnimation:
 		UseDeathTypeSuffix: false
 	Voiced:

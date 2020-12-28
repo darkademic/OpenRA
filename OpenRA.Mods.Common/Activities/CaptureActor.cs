@@ -22,10 +22,23 @@ namespace OpenRA.Mods.Common.Activities
 		Actor enterActor;
 		CaptureManager enterCaptureManager;
 
-		public CaptureActor(Actor self, Target target)
-			: base(self, target, Color.Crimson)
+		public CaptureActor(Actor self, in Target target, Color? targetLineColor)
+			: base(self, target, targetLineColor)
 		{
 			manager = self.Trait<CaptureManager>();
+		}
+
+		protected override void TickInner(Actor self, in Target target, bool targetIsDeadOrHiddenActor)
+		{
+			if (target.Type == TargetType.Actor && enterActor != target.Actor)
+			{
+				enterActor = target.Actor;
+				enterCaptureManager = target.Actor.TraitOrDefault<CaptureManager>();
+			}
+
+			if (!targetIsDeadOrHiddenActor && target.Type != TargetType.FrozenActor &&
+				(enterCaptureManager == null || !enterCaptureManager.CanBeTargetedBy(enterActor, self, manager)))
+				Cancel(self, true);
 		}
 
 		protected override bool TryStartEnter(Actor self, Actor targetActor)
@@ -46,8 +59,7 @@ namespace OpenRA.Mods.Common.Activities
 
 			// StartCapture returns false when a capture delay is enabled
 			// We wait until it returns true before allowing entering the target
-			Captures captures;
-			if (!manager.StartCapture(self, enterActor, enterCaptureManager, out captures))
+			if (!manager.StartCapture(self, enterActor, enterCaptureManager, out var captures))
 				return false;
 
 			if (!captures.Info.ConsumedByCapture)
@@ -112,12 +124,8 @@ namespace OpenRA.Mods.Common.Activities
 				foreach (var t in enterActor.TraitsImplementing<INotifyCapture>())
 					t.OnCapture(enterActor, self, oldOwner, self.Owner, captures.Info.CaptureTypes);
 
-				if (self.Owner.Stances[oldOwner].HasStance(captures.Info.PlayerExperienceStances))
-				{
-					var exp = self.Owner.PlayerActor.TraitOrDefault<PlayerExperience>();
-					if (exp != null)
-						exp.GiveExperience(captures.Info.PlayerExperience);
-				}
+				if (self.Owner.RelationshipWith(oldOwner).HasStance(captures.Info.PlayerExperienceRelationships))
+					self.Owner.PlayerActor.TraitOrDefault<PlayerExperience>()?.GiveExperience(captures.Info.PlayerExperience);
 
 				if (captures.Info.ConsumedByCapture)
 					self.Dispose();

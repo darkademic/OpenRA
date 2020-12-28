@@ -9,12 +9,10 @@
  */
 #endregion
 
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using Eluant;
 using OpenRA.Activities;
-using OpenRA.Effects;
 using OpenRA.Mods.Common.Activities;
 using OpenRA.Mods.Common.Effects;
 using OpenRA.Mods.Common.Traits;
@@ -37,8 +35,7 @@ namespace OpenRA.Mods.Common.Scripting
 
 		Actor CreateActor(Player owner, string actorType, bool addToWorld, CPos? entryLocation = null, CPos? nextLocation = null)
 		{
-			ActorInfo ai;
-			if (!Context.World.Map.Rules.Actors.TryGetValue(actorType, out ai))
+			if (!Context.World.Map.Rules.Actors.TryGetValue(actorType, out var ai))
 				throw new LuaException("Unknown actor type '{0}'".F(actorType));
 
 			var initDict = new TypeDictionary();
@@ -55,11 +52,12 @@ namespace OpenRA.Mods.Common.Scripting
 			}
 
 			if (entryLocation.HasValue && nextLocation.HasValue)
-				initDict.Add(new FacingInit(Context.World.Map.FacingBetween(CPos.Zero, CPos.Zero + (nextLocation.Value - entryLocation.Value), 0)));
+			{
+				var facing = Context.World.Map.FacingBetween(CPos.Zero, CPos.Zero + (nextLocation.Value - entryLocation.Value), WAngle.Zero);
+				initDict.Add(new FacingInit(facing));
+			}
 
-			var actor = Context.World.CreateActor(addToWorld, actorType, initDict);
-
-			return actor;
+			return Context.World.CreateActor(addToWorld, actorType, initDict);
 		}
 
 		void Move(Actor actor, CPos dest)

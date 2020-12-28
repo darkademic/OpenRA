@@ -19,9 +19,9 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.Common.Traits
 {
 	[Desc("Attach this to the player actor.")]
-	public class SupportPowerManagerInfo : ITraitInfo, Requires<DeveloperModeInfo>, Requires<TechTreeInfo>
+	public class SupportPowerManagerInfo : TraitInfo, Requires<DeveloperModeInfo>, Requires<TechTreeInfo>
 	{
-		public object Create(ActorInitializer init) { return new SupportPowerManager(init); }
+		public override object Create(ActorInitializer init) { return new SupportPowerManager(init); }
 	}
 
 	public class SupportPowerManager : ITick, IResolveOrder, ITechTreeElement
@@ -119,8 +119,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		public void PrerequisitesAvailable(string key)
 		{
-			SupportPowerInstance sp;
-			if (!Powers.TryGetValue(key, out sp))
+			if (!Powers.TryGetValue(key, out var sp))
 				return;
 
 			sp.PrerequisitesAvailable(true);
@@ -128,8 +127,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		public void PrerequisitesUnavailable(string key)
 		{
-			SupportPowerInstance sp;
-			if (!Powers.TryGetValue(key, out sp))
+			if (!Powers.TryGetValue(key, out var sp))
 				return;
 
 			sp.PrerequisitesAvailable(false);
@@ -203,27 +201,23 @@ namespace OpenRA.Mods.Common.Traits
 			if (!Active)
 				return;
 
-			if (Active)
+			var power = Instances.First();
+			if (Manager.DevMode.FastCharge && remainingSubTicks > 2500)
+				remainingSubTicks = 2500;
+
+			if (remainingSubTicks > 0)
+				remainingSubTicks = (remainingSubTicks - 100).Clamp(0, TotalTicks * 100);
+
+			if (!notifiedCharging)
 			{
-				var power = Instances.First();
-				if (Manager.DevMode.FastCharge && remainingSubTicks > 2500)
-					remainingSubTicks = 2500;
+				power.Charging(power.Self, Key);
+				notifiedCharging = true;
+			}
 
-				if (remainingSubTicks > 0)
-					remainingSubTicks = (remainingSubTicks - 100).Clamp(0, TotalTicks * 100);
-
-				if (!notifiedCharging)
-				{
-					power.Charging(power.Self, Key);
-					notifiedCharging = true;
-				}
-
-				if (RemainingTicks == 0
-					&& !notifiedReady)
-				{
-					power.Charged(power.Self, Key);
-					notifiedReady = true;
-				}
+			if (RemainingTicks == 0 && !notifiedReady)
+			{
+				power.Charged(power.Self, Key);
+				notifiedReady = true;
 			}
 		}
 
@@ -233,8 +227,13 @@ namespace OpenRA.Mods.Common.Traits
 				return;
 
 			var power = Instances.FirstOrDefault(i => !i.IsTraitPaused);
+
 			if (power == null)
 				return;
+
+			Game.Sound.PlayToPlayer(SoundType.UI, Manager.Self.Owner, Info.SelectTargetSound);
+			Game.Sound.PlayNotification(power.Self.World.Map.Rules, power.Self.Owner, "Speech",
+				Info.SelectTargetSpeechNotification, power.Self.Owner.Faction.InternalName);
 
 			power.SelectTarget(power.Self, Key, Manager);
 		}

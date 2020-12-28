@@ -9,7 +9,6 @@
  */
 #endregion
 
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Activities;
@@ -42,7 +41,7 @@ namespace OpenRA.Mods.Common.Activities
 		protected CPos lastVisibleTargetLocation;
 		bool useLastVisibleTarget;
 
-		public MoveAdjacentTo(Actor self, Target target, WPos? initialTargetPosition = null, Color? targetLineColor = null)
+		public MoveAdjacentTo(Actor self, in Target target, WPos? initialTargetPosition = null, Color? targetLineColor = null)
 		{
 			this.target = target;
 			this.targetLineColor = targetLineColor;
@@ -89,9 +88,8 @@ namespace OpenRA.Mods.Common.Activities
 
 		public override bool Tick(Actor self)
 		{
-			bool targetIsHiddenActor;
 			var oldTargetLocation = lastVisibleTargetLocation;
-			target = target.Recalculate(self.Owner, out targetIsHiddenActor);
+			target = target.Recalculate(self.Owner, out var targetIsHiddenActor);
 			if (!targetIsHiddenActor && target.Type == TargetType.Actor)
 			{
 				lastVisibleTarget = Target.FromTargetPositions(target);
@@ -135,7 +133,7 @@ namespace OpenRA.Mods.Common.Activities
 				searchCells.Clear();
 				searchCellsTick = self.World.WorldTick;
 				foreach (var cell in CandidateMovementCells(self))
-					if (domainIndex.IsPassable(loc, cell, Mobile.Info.LocomotorInfo) && Mobile.CanEnterCell(cell))
+					if (domainIndex.IsPassable(loc, cell, Mobile.Locomotor) && Mobile.CanEnterCell(cell))
 						searchCells.Add(cell);
 			}
 
