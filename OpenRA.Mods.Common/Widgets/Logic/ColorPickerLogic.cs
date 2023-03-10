@@ -29,13 +29,23 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			Dictionary<string, MiniYaml> logicArgs)
 		{
 			var mixer = widget.Get<ColorMixerWidget>("MIXER");
+			var hueSlider = widget.Get<HueSliderWidget>("HUE_SLIDER");
 
 			// Set the initial state
 			// All users need to use the same TraitInfo instance, chosen as the default mod rules
 			var colorManager = modData.DefaultRules.Actors[SystemActors.World].TraitInfo<ColorPickerManagerInfo>();
-			mixer.SetColorLimits(colorManager.HsvSaturationRange[0], colorManager.HsvSaturationRange[1], colorManager.V);
+			mixer.SetColorLimits(colorManager.HsvSaturationRange[0], colorManager.HsvSaturationRange[1], colorManager.HsvValueRange[0], colorManager.HsvValueRange[1]);
 			mixer.OnChange += () => onChange(mixer.Color);
 			mixer.Set(initialColor);
+
+			hueSlider.OnChange += (h) =>
+			{
+				mixer.SetColorLimits(colorManager.HsvSaturationRange[0], colorManager.HsvSaturationRange[1], colorManager.HsvValueRange[0], colorManager.HsvValueRange[1], h);
+				onChange(mixer.Color);
+				mixer.Set(Color.FromAhsv(h, mixer.Color.ToAhsv().S, mixer.Color.ToAhsv().V));
+			};
+
+			hueSlider.UpdateValue(initialColor.ToAhsv().H);
 
 			var randomButton = widget.GetOrNull<ButtonWidget>("RANDOM_BUTTON");
 			if (randomButton != null)
@@ -45,7 +55,12 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					.Distinct()
 					.ToList();
 				var playerColors = Enumerable.Empty<Color>();
-				randomButton.OnClick = () => mixer.Set(colorManager.RandomValidColor(world.LocalRandom, terrainColors, playerColors));
+				randomButton.OnClick = () =>
+				{
+					var randomColor = colorManager.RandomValidColor(world.LocalRandom, terrainColors, playerColors);
+					mixer.Set(randomColor);
+					hueSlider.UpdateValue(randomColor.ToAhsv().H);
+				};
 			}
 
 			if (initialFaction == null || !colorManager.FactionPreviewActors.TryGetValue(initialFaction, out var actorType))
