@@ -44,6 +44,10 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("If set to true, this unit won't stop to turn, it will turn while moving instead.")]
 		public readonly bool TurnsWhileMoving = false;
 
+		[Desc("If set to true, the actor can interrupt between-cell movement in response to non-queued movement orders and stop orders.",
+			"Requires TurnsWhileMoving = true or TurnSpeed >= 512.")]
+		public readonly bool ResponsiveBetweenCells = false;
+
 		[CursorReference]
 		[Desc("Cursor to display when a move order can be issued at target location.")]
 		public readonly string Cursor = "move";
@@ -111,6 +115,9 @@ namespace OpenRA.Mods.Common.Traits
 				throw new YamlException($"A locomotor named '{Locomotor}' doesn't exist.");
 			else if (locomotorInfos.Count > 1)
 				throw new YamlException($"There is more than one locomotor named '{Locomotor}'.");
+
+			if (ResponsiveBetweenCells && !TurnsWhileMoving && TurnSpeed.Angle < 512)
+				throw new YamlException("ResponsiveBetweenCells requires TurnsWhileMoving = true or TurnSpeed >= 512.");
 
 			LocomotorInfo = locomotorInfos[0];
 
@@ -213,6 +220,7 @@ namespace OpenRA.Mods.Common.Traits
 		INotifyFinishedMoving[] notifyFinishedMoving;
 		IWrapMove[] moveWrappers;
 		bool requireForceMove;
+		bool ResponsiveStopRequested { get; set; }
 
 		public bool IsImmovable { get; private set; }
 		public bool TurnToMove;
@@ -321,6 +329,9 @@ namespace OpenRA.Mods.Common.Traits
 
 		void ITick.Tick(Actor self)
 		{
+			if (self.CurrentActivity == null || !self.CurrentActivity.IsCanceling)
+				ResponsiveStopRequested = false;
+
 			UpdateMovement();
 		}
 
@@ -799,6 +810,19 @@ namespace OpenRA.Mods.Common.Traits
 			CrushAction(self, (notifyCrushed) => notifyCrushed.WarnCrush);
 		}
 
+		public bool HasResponsiveStopRequest => ResponsiveStopRequested;
+
+		public void RequestResponsiveStop()
+		{
+			ResponsiveStopRequested = Info.ResponsiveBetweenCells
+				&& CurrentMovementTypes.HasMovementType(MovementType.Horizontal);
+		}
+
+		public void ClearResponsiveStopRequest()
+		{
+			ResponsiveStopRequested = false;
+		}
+
 		public Activity MoveTo(Func<BlockedByActor, (bool AlreadyAtDestination, List<CPos> Path)> pathFunc) { return new Move(self, pathFunc); }
 
 		Activity LocalMove(Actor self, WPos fromPos, WPos toPos, CPos cell)
@@ -847,6 +871,8 @@ namespace OpenRA.Mods.Common.Traits
 
 		void INotifyBecomingIdle.OnBecomingIdle(Actor self)
 		{
+			ResponsiveStopRequested = false;
+
 			if (self.Location.Layer == 0)
 			{
 				// Make sure that units aren't left idling in a transit-only cell
@@ -929,6 +955,8 @@ namespace OpenRA.Mods.Common.Traits
 
 			if (order.OrderString == "Move")
 			{
+				ResponsiveStopRequested = false;
+
 				if (!order.Target.IsValidFor(self))
 					return;
 
@@ -942,9 +970,14 @@ namespace OpenRA.Mods.Common.Traits
 
 			// TODO: This should only cancel activities queued by this trait
 			else if (order.OrderString == "Stop")
+			{
+				RequestResponsiveStop();
 				self.CancelActivity();
+			}
 			else if (order.OrderString == "Scatter")
 			{
+				ResponsiveStopRequested = false;
+
 				self.QueueActivity(order.Queued, new Nudge(self));
 				self.ShowTargetLines();
 			}
